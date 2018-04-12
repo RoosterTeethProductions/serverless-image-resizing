@@ -38,18 +38,10 @@ exports.handler = function(event, context, callback) {
       .toFormat('png')
       .toBuffer()
     )
-    .then(buffer => S3.putObject({
-        Body: buffer,
-        Bucket: BUCKET,
-        ContentType: 'image/png',
-        Key: key,
-      }).promise()
-    )
-    .then(() => callback(null, {
-        statusCode: '301',
-        headers: {'location': `${URL}/${key}`},
-        body: '',
-      })
-    )
+    .then(buffer => callback(null, {
+      statusCode: '200',
+      headers: {},
+      body: buffer
+    })
     .catch(err => callback(err))
 }
