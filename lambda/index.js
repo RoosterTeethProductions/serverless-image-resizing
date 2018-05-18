@@ -42,6 +42,6 @@ exports.handler = function(event, context, callback) {
       statusCode: '200',
       headers: {},
       body: buffer
-    })
+    }))
     .catch(err => callback(err))
 }
