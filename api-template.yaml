@@ -1,7 +1,7 @@
 ---
 swagger: 2.0
 info:
-  title: ServerlessResizeApi
+  title: ServerlessResizeApi-ENV
 paths:
   /:
     get:

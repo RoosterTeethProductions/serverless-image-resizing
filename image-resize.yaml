@@ -2,20 +2,34 @@ AWSTemplateFormatVersion: 2010-09-09
 
 Transform: AWS::Serverless-2016-10-31
 
+Parameters:
+  stage:
+    Type: String
+  bucket:
+    Type: String
+  createbucket:
+    Type: String
+
+Conditions:
+  CreateB:
+    Fn::Equals: [!Ref createbucket, true]
+
 Resources:
   Api:
     Type: AWS::Serverless::Api
     Properties:
       DefinitionUri: ./deploy/api.yaml
-      StageName: prod
+      StageName: !Ref stage
       Variables:
         LambdaFunctionName: !Ref ResizeFunction
 
   ImageBucket:
+    Condition: CreateB
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     Properties:
       AccessControl: PublicRead
+      BucketName: !Ref ${bucket}
       WebsiteConfiguration:
         IndexDocument: index.html
         RoutingRules:
@@ -23,7 +37,7 @@ Resources:
               HttpRedirectCode: 307
               HostName: !Sub ${Api}.execute-api.${AWS::Region}.amazonaws.com
               Protocol: https
-              ReplaceKeyPrefixWith: prod?key=
+              ReplaceKeyPrefixWith: !Sub ${stage}?key=
             RoutingRuleCondition:
               HttpErrorCodeReturnedEquals: 404
 
@@ -37,11 +51,11 @@ Resources:
       Timeout: 60
       Environment:
         Variables:
-          BUCKET: !Ref ImageBucket
-          URL: !GetAtt ImageBucket.WebsiteURL
+          BUCKET: ${bucket}
+          URL: http://${bucket}.s3-website-us-east-1.amazonaws.com
       Policies:
           Statement:
-            - Resource: !Sub arn:aws:s3:::${ImageBucket}/*
+            - Resource: !Sub arn:aws:s3:::${bucket}
               Effect: Allow
               Action:
                 - s3:PutObject
@@ -55,6 +69,7 @@ Resources:
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*
 
   ImageBucketPolicy:
+    Condition: CreateB
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref ImageBucket

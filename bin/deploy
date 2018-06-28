@@ -2,32 +2,61 @@
 
 set -o errexit
 
-stack_name=ServerlessImageResize
+while getopts b:e: option; do
+  case "${option}" in
+    b)  bucket_name="rt-${OPTARG}";;
+    e)  environment_name=${OPTARG};;
+  esac
+done
+
 region="$(aws configure get region)"
-bucket_name="temp-serverless-resize-$(openssl rand -hex 8)"
+stack_name="severless-image-resizing"
 account_id="$(aws sts get-caller-identity --query Account --output text \
   | xargs echo -n | tr -d '\r')"
 
+bucket_check=$(aws s3 ls "s3://$bucket_name" 2>&1)
+
+if [ $? != 0 ]; then
+  exists_check=$(echo $bucket_check | grep -c 'NoSuchBucket')
+  access_disabled_check=$(echo $bucket_check | grep -c 'AllAccessDisabled')
+  if [$exists_check=1]; then
+    createbucket=true
+  else if [$access_disabled_check=1]; then
+    echo "WARN: Access to this bucket is disabled, verify ownership."
+    createbucket=false
+  else
+    echo "ERR:"
+    echo "$bucket_check"
+    exit 1
+  fi
+else
+  createbucket=false
+fi
+
 set -o xtrace
 
-sed -e "s/REGION/${region}/g" -e "s/ACCOUNT_ID/${account_id}/g" \
+sed -e "s/REGION/${region}/g" -e "s/ACCOUNT_ID/${account_id}/g" -e "s/ENV/${environment}/g" \
   api-template.yaml > deploy/api.yaml
 
-aws s3 mb "s3://${bucket_name}"
+aws s3 mb "s3://temp-${stack_name}-${environment}" --profile=rtadmin
 
 aws cloudformation package \
   --output-template-file=deploy/output.yaml \
   --template-file=image-resize.yaml \
-  --s3-bucket="${bucket_name}" \
+  --s3-bucket="temp-${stack_name}-${environment}" \
+  --profile=rtadmin \
 
 aws cloudformation deploy \
   --template-file=deploy/output.yaml \
-  --stack-name="${stack_name}" \
-  --capabilities=CAPABILITY_NAMED_IAM
+  --stack-name="${stack_name}-${environment}" \
+  --capabilities=CAPABILITY_NAMED_IAM \
+  --parameter-overrides "bucket=${bucket_name}-${environment_name} stage=${environment_name} createbucket=${createbucket}" \
+  --profile=rtadmin
 
-aws s3 rb --force "s3://${bucket_name}"
+aws s3 rb --force "s3://temp-${stack_name}-${environment}" --profile=rtadmin
 
 aws cloudformation describe-stacks \
-  --stack-name "${stack_name}" \
+  --stack-name "${stack_name}-${environment}" \
   --query Stacks[].Outputs \
-  --output table
+  --output table \
+  --profile=rtadmin

@@ -39,9 +39,13 @@ exports.handler = function(event, context, callback) {
       .toBuffer()
     )
     .then(buffer => callback(null, {
-      statusCode: '200',
-      headers: {},
-      body: buffer
-    })
+        statusCode: '200',
+        headers: {
+          'Content-Type': 'image/png'
+        },
+        body: buffer.toString('base64'),
+        isBase64Encoded: true
+      })
+    )
     .catch(err => callback(err))
 }
