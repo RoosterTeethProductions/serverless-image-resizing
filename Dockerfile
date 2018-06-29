@@ -1,4 +1,4 @@
-FROM amazonlinux
+FROM amazonlinux:2018.03
 
 ADD etc/nodesource.gpg.key /etc
 

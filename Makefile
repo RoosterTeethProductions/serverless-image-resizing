@@ -14,3 +14,4 @@ dist: package
 clean:
 	rm -r lambda/node_modules
 	docker rmi --force amazonlinux:nodejs
+	rm deploy/*

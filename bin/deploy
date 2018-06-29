@@ -1,27 +1,32 @@
 #!/bin/bash
 
-set -o errexit
-
 while getopts b:e: option; do
   case "${option}" in
     b)  bucket_name="rt-${OPTARG}";;
-    e)  environment_name=${OPTARG};;
+    e)  environment=${OPTARG};;
   esac
 done
+
+echo $bucket_name
+echo $environment
 
 region="$(aws configure get region)"
 stack_name="severless-image-resizing"
 account_id="$(aws sts get-caller-identity --query Account --output text \
   | xargs echo -n | tr -d '\r')"
 
+set -o xtrace
+
 bucket_check=$(aws s3 ls "s3://$bucket_name" 2>&1)
 
 if [ $? != 0 ]; then
+  echo "1st"
   exists_check=$(echo $bucket_check | grep -c 'NoSuchBucket')
   access_disabled_check=$(echo $bucket_check | grep -c 'AllAccessDisabled')
-  if [$exists_check=1]; then
+  if [ $exists_check = 1 ]; then
+    echo "Bucket does not exist, $bucket_name will be created."
     createbucket=true
-  else if [$access_disabled_check=1]; then
+  elif [ $access_disabled_check = 1 ]; then
     echo "WARN: Access to this bucket is disabled, verify ownership."
     createbucket=false
   else
@@ -30,10 +35,9 @@ if [ $? != 0 ]; then
     exit 1
   fi
 else
+  echo "Bucket exists"
   createbucket=false
 fi
-
-set -o xtrace
 
 sed -e "s/REGION/${region}/g" -e "s/ACCOUNT_ID/${account_id}/g" -e "s/ENV/${environment}/g" \
   api-template.yaml > deploy/api.yaml
@@ -50,7 +54,7 @@ aws cloudformation deploy \
   --template-file=deploy/output.yaml \
   --stack-name="${stack_name}-${environment}" \
   --capabilities=CAPABILITY_NAMED_IAM \
-  --parameter-overrides "bucket=${bucket_name}-${environment_name} stage=${environment_name} createbucket=${createbucket}" \
+  --parameter-overrides bucket=${bucket_name}-${environment} stage=${environment} createbucket=${createbucket} \
   --profile=rtadmin
 
 aws s3 rb --force "s3://temp-${stack_name}-${environment}" --profile=rtadmin

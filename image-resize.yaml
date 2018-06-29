@@ -19,7 +19,7 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       DefinitionUri: ./deploy/api.yaml
-      StageName: !Ref stage
+      StageName: prod
       Variables:
         LambdaFunctionName: !Ref ResizeFunction
 
@@ -29,7 +29,7 @@ Resources:
     DeletionPolicy: Retain
     Properties:
       AccessControl: PublicRead
-      BucketName: !Ref ${bucket}
+      BucketName: !Ref bucket
       WebsiteConfiguration:
         IndexDocument: index.html
         RoutingRules:
@@ -51,8 +51,8 @@ Resources:
       Timeout: 60
       Environment:
         Variables:
-          BUCKET: ${bucket}
-          URL: http://${bucket}.s3-website-us-east-1.amazonaws.com
+          BUCKET: !Ref bucket
+          URL: !Sub http://${bucket}.s3-website-us-east-1.amazonaws.com
       Policies:
           Statement:
             - Resource: !Sub arn:aws:s3:::${bucket}
