@@ -81,7 +81,5 @@ Resources:
             Resource: !Sub arn:aws:s3:::${ImageBucket}/*
 
 Outputs:
-  BucketWebsiteUrl:
-    Value: !GetAtt ImageBucket.WebsiteURL
   Bucket:
     Value: !Ref ImageBucket
